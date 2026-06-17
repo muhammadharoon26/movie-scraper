@@ -36,7 +36,9 @@ def create_app() -> FastAPI:
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
                 "detail": "Validation error",
-                "errors": [{k: v for k, v in err.items() if k != "ctx"} for err in exc.errors()]
+                "errors": [
+                    {k: v for k, v in err.items() if k != "ctx"} for err in exc.errors()
+                ],
             },
         )
 

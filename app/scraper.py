@@ -139,9 +139,13 @@ def upsert_movies(session: Session, movies: list[dict]) -> tuple[int, int]:
     if not movies:
         return 0, 0
 
-    stmt = insert(Movie).values(movies).on_conflict_do_nothing(
-        index_elements=["tmdb_id"],
-        index_where=Movie.deleted_at.is_(None),  # type: ignore[union-attr]
+    stmt = (
+        insert(Movie)
+        .values(movies)
+        .on_conflict_do_nothing(
+            index_elements=["tmdb_id"],
+            index_where=Movie.deleted_at.is_(None),  # type: ignore[union-attr]
+        )
     )
     result = session.exec(stmt)  # type: ignore[arg-type]
     session.commit()
