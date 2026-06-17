@@ -34,7 +34,7 @@ A production-grade mini movie scraper and REST API that fetches trending movies 
 
 ```bash
 # 1. Clone the repository
-git clone <repo-url>
+git clone https://github.com/muhammadharoon26/movie-scraper
 cd movie-scraper
 
 # 2. Copy and configure environment variables
