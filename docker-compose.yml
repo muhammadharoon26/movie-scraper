@@ -1,0 +1,74 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-movie_scraper}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-movie_scraper}
+      REDIS_URL: redis://redis:6379/0
+    command: >
+      sh -c "python -m alembic upgrade head &&
+             python seed.py &&
+             echo '\n=======================================================' &&
+             echo '🚀 ALL SERVICES ARE UP AND RUNNING!' &&
+             echo '🔗 API Base URL:        http://localhost:8000' &&
+             echo '🔗 API Docs (Swagger):  http://localhost:8000/docs' &&
+             echo '🔗 API Docs (ReDoc):    http://localhost:8000/redoc' &&
+             echo '🐘 PostgreSQL Database: localhost:5432' &&
+             echo '🔴 Redis Cache/Broker:  localhost:6379' &&
+             echo '=======================================================\n' &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  worker:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-movie_scraper}
+      REDIS_URL: redis://redis:6379/0
+    command: celery -A celery_app worker --loglevel=info
+
+volumes:
+  postgres_data:
